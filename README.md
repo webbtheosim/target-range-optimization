@@ -6,9 +6,13 @@
 ```bash
 git clone https://github.com/webbtheosim/target-range-optimization.git
 cd target-range-optimization
+# First time (or remove old env first: conda env remove -n bo_target)
 conda env create -f environment.yml
 conda activate bo_target
 ```
+
+> If the environment already exists, run `conda env update -f environment.yml`
+> instead of `conda env create`.
 
 `conda env create` also installs this package (editable), so the `bo_target`
 imports below work immediately.
