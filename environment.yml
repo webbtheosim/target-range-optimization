@@ -25,3 +25,4 @@ dependencies:
     - mordred==1.2.0
     - scikit-learn-extra==0.3.0
     - emukit @ git+https://github.com/sjiang87/emukit.git@0317f3189a0113aaca9842fcb8e111f89f78b412
+    - pyDOE==0.3.8
