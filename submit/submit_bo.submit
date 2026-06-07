@@ -1,0 +1,43 @@
+#!/bin/bash
+# =============================================================================
+# SLURM batch array for Bayesian optimization sweep.
+#
+# Customize the three variables below for your cluster, then submit with:
+#   sbatch submit/sweep.submit
+#
+# The array runs gen_combinations() split evenly across tasks (see main_bo.py).
+# Default sweep: 14 datasets x 6 acquisitions x 3 tolerances x 10 trials
+# = 2520 combinations, split across SLURM array tasks.
+# =============================================================================
+#SBATCH --job-name=bo_sweep
+#SBATCH --error=/scratch/gpfs/WEBB/sj0161/log/bo/bo_sweep_%a.err
+#SBATCH --output=/scratch/gpfs/WEBB/sj0161/log/bo/bo_sweep_%a.out
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem-per-cpu=16G
+##SBATCH --gres=gpu:1
+##SBATCH --partition=mig
+#SBATCH --array=0-119
+#SBATCH --time=24:00:00
+
+# ---------- user settings (edit these) ----------
+REPO_DIR="$HOME/target-range-optimization"            # path to this repository
+CONDA_ENV="bo-target-custom"                            # conda environment name
+# --------------------------------------------------
+
+TRAIN_SCRIPT="${REPO_DIR}/bo_target/main_bo.py"
+
+main() {
+    export PATH="${PATH}:/usr/local/nvidia/bin:/usr/local/cuda/bin"
+    module load anaconda3/2025.6
+    conda activate "$CONDA_ENV"
+
+    echo "Job ID: $SLURM_ARRAY_JOB_ID"
+    echo "Task ID: $SLURM_ARRAY_TASK_ID"
+    echo "Host: $(hostname)"
+
+    python3 -u "$TRAIN_SCRIPT"
+}
+
+main "$@"

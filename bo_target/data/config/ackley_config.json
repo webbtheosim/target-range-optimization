@@ -1,0 +1,27 @@
+{
+  "global": {
+    "random_state": 26,
+    "max_iter": 200
+  },
+  "name": "ackley",
+  "format": "surface",
+  "target": [
+    [
+      6.823752633489859
+    ],
+    [
+      8.641641239857
+    ],
+    [
+      9.857383889338566
+    ],
+    [
+      10.911648847253092
+    ],
+    [
+      12.06223032310287
+    ]
+  ],
+  "epsilon": 0.5271,
+  "output_standardized": false
+}

@@ -1,0 +1,17 @@
+{
+    "xlabelsize": 9,
+    "ylabelsize": 9,
+    "xticklabelsize": 8,
+    "yticklabelsize": 8,
+    "titlesize": 9,
+    "titleweight": "bold",
+    "tickdir": "out",
+    "ticklen": 3,
+    "ticklenratio": 0.5,
+    "tickwidth": 0.6,
+    "xlabelpad": 2,
+    "ylabelpad": 2,
+    "titlepad": 2,
+    "linewidth": 1.1,
+    "grid": "False"
+}
