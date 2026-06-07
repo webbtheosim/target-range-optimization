@@ -57,8 +57,6 @@ python -m bo_target.main_bo --dataset hartmann --target=-2.0 --epsilon=0.3
 # Two 2-D targets (e.g. HOMO, LUMO), shared band 0.5
 python -m bo_target.main_bo --dataset qm9 --target=-1.0,-1.0 --target=0.1,0.3 --epsilon=0.5
 ```
-
-A property *range* `[lo, hi]` maps to `--target=(lo+hi)/2 --epsilon=(hi-lo)/2`.
 You can also point at a custom config file: `--config my_config.json` (same
 schema as `bo_target/data/config/*.json`).
 
