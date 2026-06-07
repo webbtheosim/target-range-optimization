@@ -153,7 +153,7 @@ def main(
     opt_loop = BayesianOptimizationLoop(
         model=model,
         space=space,
-        acquisition=acquisitions,
+        acquisition=acquisitions[0] if len(acquisitions) == 1 else acquisitions,
         batch_size=len(acquisitions),
         acquisition_optimizer=acquisition_optimizer,
     )
