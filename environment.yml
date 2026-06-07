@@ -12,9 +12,10 @@ dependencies:
   - tqdm=4.67
   - openpyxl=3.1
   - joblib=1.5
+  - c-compiler
+  - cxx-compiler
   - pip
   - pip:
-    # Install this package itself (editable) so `from bo_target...` imports work.
     - -e .
     - GPy==1.13.2
     - autograd==1.8.0
@@ -22,8 +23,5 @@ dependencies:
     - rdkit==2025.9.3
     - umap-learn==0.5.12
     - mordred==1.2.0
-    # KMedoids target selection — only needed to regenerate targets/configs.
-    - scikit-learn-extra @ git+https://github.com/scikit-learn-contrib/scikit-learn-extra.git@0f95d8dda4c69f9de4fb002366041adcb1302f3b
-    # BO loop / acquisition framework — pinned fork used in this work
-    # (includes MultiSequentialPointCalculator for multi-target batch BO).
+    - scikit-learn-extra==0.3.0
     - emukit @ git+https://github.com/sjiang87/emukit.git@0317f3189a0113aaca9842fcb8e111f89f78b412
