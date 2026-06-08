@@ -39,14 +39,16 @@ def _corner_label(ax, i):
 def plot_kmc_rows(axs, XX, targets, discovered_curves, colors):
     """Top row: target + discovered spectra. Bottom row: residuals."""
     cc = pplt.Colormap("Reds")(np.linspace(0, 1, N_EXAMPLES))
+    
+    XX = XX + np.log10(104.15) # g/mol
 
     for i in range(N_TARGETS):
         axs[i].plot(XX, targets[i], c=colors[0], lw=2, zorder=0,
                     label="Target" if i == 0 else None)
         axs[i].format(
-            xlim=[0, 5], ylim=[-0.01, 0.2],
-            xticks=[0, 1, 2, 3, 4, 5],
-            xlabel=r"$\log_{10}$ Molecular Weight",
+            xlim=[2, 7], ylim=[-0.01, 0.2],
+            xticks=[2, 3, 4, 5, 6, 7],
+            xlabel=r"$\log_{10}$ Molecular Weight $\mathit{M}$ (g mol$^{-1}$)",
             ylabel="Weight Fraction",
         )
         format_ax(axs[i])
@@ -60,9 +62,9 @@ def plot_kmc_rows(axs, XX, targets, discovered_curves, colors):
                 label="Residuals" if (i == 0 and j == n_curves - 1) else None,
             )
         axs[i + N_TARGETS].format(
-            xlim=[0, 5], ylim=[-0.1, 0.1],
-            xticks=[0, 1, 2, 3, 4, 5],
-            xlabel=r"$\log_{10}$ Molecular Weight",
+            xlim=[2, 7], ylim=[-0.1, 0.1],
+            xticks=[2, 3, 4, 5, 6, 7],
+            xlabel=r"$\log_{10}$ Molecular Weight $\mathit{M}$ (g mol$^{-1}$)",
             ylabel="Residual",
         )
         format_ax(axs[i + N_TARGETS])
@@ -85,6 +87,7 @@ def main():
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     fig.savefig(OUT_DIR / "fig5_kmc_residual.png", dpi=300, bbox_inches="tight")
+    fig.savefig(OUT_DIR / "fig5_kmc_residual.svg", dpi=300, bbox_inches="tight")
     return fig
 
 
