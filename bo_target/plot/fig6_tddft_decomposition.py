@@ -47,13 +47,11 @@ def plot_tddft_decomposition(
     e_sort = np.argsort(energies)
     energies_asc = energies[e_sort]
 
-    # auto-select best-fit molecule
+    # auto-select best-fit molecule (require at least 5 fitted Gaussians
+    # with amplitude > 0.08 for a meaningful decomposition)
     if molecule_idx is None:
-        valid = np.where(
-            (phys_full[:, 0] > 0.05)
-            & (phys_full[:, 2] > 0.05)
-            & (phys_full[:, 4] > 0.05)
-        )[0]
+        n_meaningful = np.sum(phys_full[:, 0::2] > 0.08, axis=1)
+        valid = np.where(n_meaningful >= min(5, N_GAUSSIANS))[0]
         if len(valid) == 0:
             valid = np.arange(phys_full.shape[0])
         errors = np.zeros(len(valid))
@@ -67,7 +65,7 @@ def plot_tddft_decomposition(
 
     params = phys_full[molecule_idx].reshape(N_GAUSSIANS, 2)
     raw_ev = raw_spectra[molecule_idx][e_sort]
-    colors = ["#E4256D", "#2495C1", "#F5A623"]
+    colors = ["#E4256D", "#2495C1", "#F5A623", "#7B4B94", "#3CA474", "#FF88FB"][:N_GAUSSIANS]
 
     # build figure
     fig, (ax, ax_res) = pplt.subplots(
@@ -126,7 +124,7 @@ def plot_tddft_decomposition(
     wl_top.set_xticklabels([str(int(w)) for w in wl_ticks_nm])
     wl_top.set_xlabel("Wavelength (nm)")
 
-    ax.legend(loc="ur", fontsize=7, ncols=1, framealpha=0.9, edgecolor="0.7")
+    ax.legend(loc="ul", fontsize=7, ncols=2, framealpha=0.9, edgecolor="0.7")
     ax.set_xlabel("")
     format_ax(ax)
     # the top spine is reserved for the wavelength twin axis; suppress the

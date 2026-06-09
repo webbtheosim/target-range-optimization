@@ -39,7 +39,7 @@ RANDOM_STATE = 26
 WAVELENGTH_START = 240
 WAVELENGTH_END = 500
 EPSILON_SCALE = 0.6
-N_GAUSSIANS = 3
+N_GAUSSIANS = 5
 FIXED_SIGMA_EV = 0.12
 N_TARGETS = 5
 HC_EV_NM = 1239.841984
@@ -142,46 +142,89 @@ def gaussian_params_to_spectrum_ev(params, wavelengths):
 
 
 def spectrum_to_gaussian_params_ev(wavelengths, spectrum, n_gaussians=5):
-    """Fit K Gaussians in eV space with fixed sigma, return [A1, E1, A2, E2, ...]."""
+    """Fit K Gaussians in eV space with fixed sigma; A1 constrained to 1.0.
+
+    The tallest Gaussian's amplitude is fixed at 1.0 (spectra are
+    pre-normalised so max = 1).  Only mu1 and (A_k, mu_k) for k >= 2
+    are fitted, giving 2K-1 free parameters.
+
+    Returns [A1=1.0, mu1, A2, mu2, A3, mu3, ...] (2K params).
+    """
     energies = wl_to_ev(wavelengths)
     e_sort = np.argsort(energies)
     energies_asc = energies[e_sort]
     spectrum_asc = np.asarray(spectrum)[e_sort]
     e_min, e_max = energies_asc[0], energies_asc[-1]
 
-    peaks, props = find_peaks(
-        spectrum_asc, height=0.005, distance=3, prominence=0.002
+    # --- 2nd-derivative peak detection for resolving overlapping bands ---
+    # The 2nd derivative amplifies curvature; -d^2I/dE^2 has positive peaks
+    # at absorption maxima, even when they appear only as shoulders in
+    # the raw spectrum.  Combined with raw-spectrum peaks this gives
+    # better initial guesses for closely-spaced bands.
+    dI = np.gradient(spectrum_asc, energies_asc)
+    d2I = np.gradient(dI, energies_asc)
+    neg_d2 = -d2I
+
+    peaks_2d, _ = find_peaks(
+        neg_d2, height=0.0005, distance=2, prominence=0.0002
+    )
+    peaks_raw, _ = find_peaks(
+        spectrum_asc, height=0.003, distance=2, prominence=0.001
     )
 
-    if len(peaks) == 0:
+    # merge both sets; deduplicate peaks within 2 bins of each other
+    combined = np.union1d(peaks_2d, peaks_raw)
+    if len(combined) > 1:
+        merged = [combined[0]]
+        for p in combined[1:]:
+            if p - merged[-1] > 2:
+                merged.append(p)
+        combined = np.array(merged)
+
+    if len(combined) == 0:
+        # last-resort fallback: raw spectrum with lenient thresholds
+        combined, _ = find_peaks(
+            spectrum_asc, height=0.005, distance=3, prominence=0.002
+        )
+
+    if len(combined) == 0:
         params = np.zeros((n_gaussians, 2))
-        params[:, 1] = np.linspace(e_min + 0.15, e_max - 0.15, n_gaussians)
+        params[0, 0] = 1.0   # A1 fixed
+        params[0, 1] = float(np.median(energies_asc))
+        params[1:, 1] = np.linspace(
+            e_min + 0.15, e_max - 0.15, n_gaussians - 1
+        )
         return params.flatten()
 
-    peak_order = np.argsort(spectrum_asc[peaks])[::-1]
-    peaks = peaks[peak_order][:n_gaussians]
+    # sort by raw spectrum amplitude (tallest first -> will be A1 = 1.0)
+    peak_order = np.argsort(spectrum_asc[combined])[::-1]
+    peaks = combined[peak_order][:n_gaussians]
 
-    p0 = []
-    bounds_low = []
-    bounds_high = []
+    # tallest peak -> mu1 only (A1 = 1.0 fixed)
+    p0 = [float(energies_asc[peaks[0]])]
+    bounds_low = [e_min]
+    bounds_high = [e_max]
 
-    for idx in peaks:
+    # remaining peaks -> fit (A, mu) pairs
+    for idx in peaks[1:]:
         amp = float(spectrum_asc[idx])
         mu_e = float(energies_asc[idx])
         p0.extend([amp, mu_e])
         bounds_low.extend([0.0, e_min])
-        bounds_high.extend([2.0, e_max])
+        bounds_high.extend([1.0, e_max])
 
-    while len(p0) < n_gaussians * 2:
+    # pad to 2K-1 parameters if not enough peaks found
+    while len(p0) < 2 * n_gaussians - 1:
         p0.extend([0.001, float(np.median(energies_asc))])
         bounds_low.extend([0.0, e_min])
         bounds_high.extend([0.01, e_max])
 
     def _model(x, *par):
-        y = np.zeros_like(x)
-        for k in range(n_gaussians):
-            a = par[2 * k]
-            mu_k = par[2 * k + 1]
+        """par = [mu1, A2, mu2, A3, mu3, ...]  -- A1 = 1.0 fixed."""
+        y = 1.0 * np.exp(-0.5 * ((x - par[0]) / FIXED_SIGMA_EV) ** 2)
+        for k in range(1, n_gaussians):
+            a = par[2 * k - 1]
+            mu_k = par[2 * k]
             y += a * np.exp(-0.5 * ((x - mu_k) / FIXED_SIGMA_EV) ** 2)
         return y
 
@@ -196,14 +239,26 @@ def spectrum_to_gaussian_params_ev(wavelengths, spectrum, n_gaussians=5):
         ftol=1e-8,
     )
 
-    params = np.array(popt).reshape(n_gaussians, 2)
-    params = params[np.argsort(params[:, 0])[::-1]]
+    # Reconstruct full 2K params: [A1=1.0, mu1, A2, mu2, A3, mu3, ...]
+    full = np.zeros(n_gaussians * 2)
+    full[0] = 1.0          # A1 fixed
+    full[1] = popt[0]      # mu1
+    full[2:] = popt[1:]    # A2, mu2, A3, mu3, ...
+
+    params = full.reshape(n_gaussians, 2)
+
+    # Sort Gaussians 2..K by amplitude descending; Gaussian 1 (A1=1) stays first
+    if n_gaussians > 1:
+        remaining = params[1:]
+        remaining = remaining[np.argsort(remaining[:, 0])[::-1]]
+        params[1:] = remaining
 
     amp_thresh = 0.02
     canon_e = float(np.median(energies_asc))
-    unused = params[:, 0] < amp_thresh
-    params[unused, 0] = 0.0
-    params[unused, 1] = canon_e
+    for k in range(n_gaussians):
+        if params[k, 0] < amp_thresh and k != 0:
+            params[k, 0] = 0.0
+            params[k, 1] = canon_e
 
     return params.flatten()
 
@@ -348,11 +403,21 @@ def load_or_build_tddft_data(
         )
 
     print(f"Original Mordred shape: {mordred_data.shape}")
-    mordred_data, raw_spectra = remove_duplicate_rows(mordred_data, raw_spectra)
+    # Align SMILES + spectra to unique Mordred fingerprints
+    _, unique_idx = np.unique(mordred_data, axis=0, return_index=True)
+    unique_idx = np.sort(unique_idx)
+    mordred_data = mordred_data[unique_idx]
+    raw_spectra = raw_spectra[unique_idx]
+    smiles_list = [smiles_list[i] for i in unique_idx]
     n_removed = len(df_raw) - len(mordred_data)
     print(
         f"Removed {n_removed} duplicate rows -> New shape: {mordred_data.shape}"
     )
+
+    # Cache aligned SMILES for downstream use (fig6 pair plot etc.)
+    smiles_aligned_file = clean_dir / "tddft_smiles_aligned.npy"
+    np.save(smiles_aligned_file, np.array(smiles_list, dtype=str))
+    print(f"Saved aligned SMILES -> {smiles_aligned_file}")
 
     print("Applying StandardScaler -> PCA (95% var) -> MinMaxScaler[0,1]...")
     scaled_x = apply_pca_pipeline(mordred_data, random_state=RANDOM_STATE)
@@ -372,6 +437,7 @@ SCALED_TDDFT_DATA, RAW_TDDFT_LABELS_FULL = load_or_build_tddft_data(
     force_pca=force_pca,
     force_gaussian=force_gaussian,
 )
+# A1 is fixed at 1.0 during fitting; drop it from the BO target vector
 RAW_TDDFT_LABELS = RAW_TDDFT_LABELS_FULL[:, 1:]
 
 
@@ -411,7 +477,7 @@ if __name__ == "__main__":
     n_full = len(valid_configs)
     print(f"\nFull dataset size: {n_full}")
     print(
-        f"Target: eV-space Gaussian params ({RAW_TDDFT_LABELS.shape[1]}D, K={N_GAUSSIANS}, A1 dropped)"
+        f"Target: eV-space Gaussian params ({RAW_TDDFT_LABELS.shape[1]}D, K={N_GAUSSIANS}, A1=1 fixed)"
     )
 
     candidates = {}

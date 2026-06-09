@@ -9,9 +9,19 @@ from scipy.spatial.distance import cdist
 
 
 def _aligned_smiles():
-    """Return the SMILES list row-aligned to the cached feature/label arrays."""
-    from bo_target.data.tddft import xlsx_file
+    """Return the SMILES list row-aligned to the cached feature/label arrays.
 
+    Uses the cached ``tddft_smiles_aligned.npy`` written by tddft.py after
+    both SMILES and Mordred-fingerprint deduplication.  Falls back to the
+    old SMILES-only alignment if the cache is missing.
+    """
+    from bo_target.data.tddft import clean_dir
+    cache = clean_dir / "tddft_smiles_aligned.npy"
+    if cache.exists():
+        return np.load(cache).tolist()
+
+    # Fallback (legacy — may be misaligned if Mordred dedup merged rows)
+    from bo_target.data.tddft import xlsx_file
     df = pd.read_excel(xlsx_file)
     smiles_col = next(
         (c for c in df.columns if str(c).strip().upper() == "SMILES"), None

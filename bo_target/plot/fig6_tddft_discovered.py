@@ -34,9 +34,10 @@ def plot_tddft_discovered(save_dir=None):
 
     scaler = GroupMinMaxScaler.load(GAUSSIAN_EV_SCALER_FILE,
                                      n_gaussians=N_GAUSSIANS)
-    # Reconstruct full target params
+    # Reconstruct full target params (A1 = 1.0 in physical units)
+    a1_scaled = (1.0 - scaler.mins["A"]) / (scaler.maxs["A"] - scaler.mins["A"])
     targets_full = np.zeros((targets_scaled.shape[0], N_GAUSSIANS * 2))
-    targets_full[:, 0] = 1.0
+    targets_full[:, 0] = a1_scaled
     targets_full[:, 1:] = targets_scaled
     targets_phys = scaler.inverse_transform(targets_full)
 

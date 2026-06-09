@@ -70,7 +70,28 @@ def _select_set(target_idx, results_dir, smiles, n=N_CURVES, pool_mult=POOL_MULT
     lo = int(np.argmin(spans))
     pool = hits_sorted[lo:lo + M]
 
-    chosen = pool if M == n else pool[_farthest_point_select(features[pool], n)]
+    # closest to target in BO (output) space, then farthest in input
+    # among the pool — balances spectral similarity with structural diversity
+    bo_dists = np.linalg.norm(labels_bo[pool] - targets_scaled[t], axis=1)
+    if M == n:
+        chosen = pool
+    else:
+        # greedy: pick closest, then farthest in input from already chosen
+        order = np.argsort(bo_dists)
+        chosen_idx = [order[0]]  # closest to target
+        for _ in range(1, n):
+            # among remaining, pick the one farthest in input from chosen
+            remaining = [o for o in order if o not in chosen_idx]
+            max_d = -1
+            best = remaining[0]
+            for r in remaining:
+                d = np.min(np.linalg.norm(
+                    features[pool[r]] - features[pool[chosen_idx]], axis=1))
+                if d > max_d:
+                    max_d = d
+                    best = r
+            chosen_idx.append(best)
+        chosen = pool[np.array(chosen_idx)]
 
     mu1_vals = [float(phys[i, 1]) for i in chosen]
     return {

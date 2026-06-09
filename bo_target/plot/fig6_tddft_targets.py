@@ -65,7 +65,7 @@ def plot_tddft_targets(save_dir=None):
 
     # plot
     target_colors = ["#E4256D", "#2495C1", "#F5A623", "#7B4B94", "#3CA474"]
-    gauss_colors = ["#E4256D", "#2495C1", "#F5A623"]  # G1, G2, G3
+    gauss_colors = ["#E4256D", "#2495C1", "#F5A623", "#7B4B94", "#3CA474"][:N_GAUSSIANS]
 
     fig, axes = pplt.subplots(
         nrows=5, ncols=1,
