@@ -1,5 +1,9 @@
 # Target-Range Bayesian Optimization for Diverse Materials and Product Design
 
+> **Preprint:** [Range-Aware Bayesian Optimization for Discovering Diverse Designs within Target Property Windows](https://arxiv.org/abs/2606.11574)  
+> Shengli Jiang, Jason Wu, Charles M. Schroeder, Michael A. Webb 
+
+![TOC](toc.png)
 
 ## Quick start
 
